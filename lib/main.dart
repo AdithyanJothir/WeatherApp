@@ -180,8 +180,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Weather App',
       home: MyHomePage(title: 'Weather App'),
+      theme: ThemeData(fontFamily: "Schyler"),
+      debugShowCheckedModeBanner: false, 
     );
   }
 }
@@ -228,8 +230,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     _locationData = await location.getLocation();
 
+
     return true;
   }
+
+  // Reverse Geo
+
 
   // Weather data
 
@@ -313,33 +319,98 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch, // <-- Add this line
+          crossAxisAlignment: CrossAxisAlignment.stretch, 
           children: <Widget>[
             Expanded(
-              flex: 2,
+              flex: 12,
               child: Stack(
                 children: <Widget>[
                   TopWeatherImageWidget(imageProvider: currentImageProvider),
                   Align(
-                    alignment: Alignment(-0.8, -0.6),
-                    child: Text(
-                      "${currWeatherData?.temprature as String}°",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 100,
-                        ),
+                    alignment: Alignment(-0.8, -0.5),
+                    child: Stack( 
+                      children: [ 
+                        Text(
+                          currWeatherData?.isDay == 0 ?  "Night": "Day",
+                          style: TextStyle(
+                            fontSize: 50,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = 3
+                              ..color = Colors.black,
+                            ),
+                         ),
+                         Text(
+                          currWeatherData?.isDay == 0 ?  "Night": "Day",
+                          style: TextStyle
+                              (
+                                fontSize: 50,
+                                color: Colors.white,
+                              ),   
+                          )
+                      ],
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment(-0.8, -0.2),
+                    child: Stack( 
+                      children: [ 
+                        Text(
+                          "${currWeatherData?.temprature as String}°",
+                          style: TextStyle(
+                            fontSize: 100,
+                            fontFamily: 'Roboto',
+                            fontWeight: FontWeight.w500,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = 5
+                              ..color = Colors.black,
+                            ),
+                         ),
+                         Text(
+                          "${currWeatherData?.temprature as String}°",
+                          style: TextStyle
+                              (
+                                fontSize: 100,
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),   
+                          )
+                      ],
                     ),
                   )
                 ]
               )
               ),
             Expanded(
-              flex:1 ,
+              flex:4 ,
               child: 
-              FractionallySizedBox(
-                heightFactor: 0.4,
-                child: hourlyWeatherSection(weatherCodes:dailyWeather ),
-            )
+              Column(
+                children: [ 
+                  SizedBox(
+                    height: 60,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                      child: 
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Today", style: TextStyle(fontWeight: FontWeight.bold),),
+                            Text("Chicago", style: TextStyle(fontWeight: FontWeight.bold),)
+                          ],
+                      )
+                    )
+                    
+                    ),
+                  Flexible(
+                    child: FractionallySizedBox(
+                            heightFactor: 0.8,
+                            child: hourlyWeatherSection(weatherCodes:dailyWeather ),
+                          )
+                )
+                ]
+              )
             )
           ],
         ),
@@ -400,21 +471,29 @@ Container hourlyWeatherSection({required List<Weather> weatherCodes }){
         padding: EdgeInsets.only(left:20, right: 20),
         itemBuilder: (context, index) {
           return Container(
-            width: 100, 
+            width: 150,
             decoration: 
             BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: WeatherCodes.getWeatherInfoWithFallback(weatherCodes[index].weatherCode).color
+              // color: WeatherCodes.getWeatherInfoWithFallback(weatherCodes[index].weatherCode).color
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                Text(
+                  style: TextStyle(color: index == 0 ? Colors.black : Color.fromRGBO(155, 155, 155, 1)),
+                  index == 0 ? "Now" : DateFormat("h a").format(weatherCodes[index].time),
+                ),
                 Container(
                   width: 50,
                   height: 50,
                   child: Image.asset(WeatherCodes.getWeatherInfoWithFallback(weatherCodes[index].weatherCode).assetPath),
                 ),
-                Text(WeatherCodes.getWeatherInfoWithFallback(weatherCodes[index].weatherCode).name)
+                Text(WeatherCodes.getWeatherInfoWithFallback(weatherCodes[index].weatherCode).name),
+                Text(
+                  style: TextStyle(fontWeight:FontWeight.bold ),
+                  "${weatherCodes[index].temprature}°c"
+                )
               ],
             )
           );
