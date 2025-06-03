@@ -5,7 +5,10 @@ import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
 import 'package:weather_app/models/weather.dart';
 import 'package:weather_app/models/weather_codes.dart';
+import 'package:weather_app/models/location.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/data/latest.dart' as tzinit;
+import 'package:timezone/timezone.dart' as tz;
 
 
 class WeatherCodes {
@@ -170,6 +173,7 @@ class WeatherCodes {
 
 
 void main() {
+  tzinit.initializeTimeZones();
   runApp(const MyApp());
 }
 
@@ -182,7 +186,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Weather App',
       home: MyHomePage(title: 'Weather App'),
-      theme: ThemeData(fontFamily: "Schyler"),
+      theme: ThemeData(fontFamily: "Poppins"),
       debugShowCheckedModeBanner: false, 
     );
   }
@@ -203,6 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 
   bool _isLoading = true;
+
 
   // Location data
   Location location = Location();
@@ -234,31 +239,54 @@ class _MyHomePageState extends State<MyHomePage> {
     return true;
   }
 
-  // Reverse Geo
+  // Reverse Geocoding
+
+  Future<LocationInfo> getRevGeoData() async{
+    if(_locationData == null){
+      throw Exception("Location permission not granted");
+    }
+
+    String url = "https://us1.api-bdc.net/data/reverse-geocode-client?latitude=${_locationData!.latitude}&longitude=${_locationData!.longitude}&localityLanguage=en";
+    Map<String, dynamic> apiReponse = await ApiService.fetch(url=url);
+    String city = apiReponse["city"];
+    String timeZone = "";
+    apiReponse["localityInfo"]["informative"].forEach((apiReponse) {
+      if(apiReponse["description"] == "time zone"){
+          timeZone = apiReponse["name"];
+      }
+    });
+    return LocationInfo(city: city, timeZone: timeZone);
+  }
 
 
   // Weather data
 
   Map<String ,Weather> weeklyWeatherData = {};
   List<Weather> dailyWeather = [];
+  late LocationInfo locationInfo;
 
-  void getWeatherData(DateTime today, DateTime oneWeekFromNow ) async{
+  void getWeatherData(DateTime today, DateTime tommorow ) async{
     bool hasLocationPermission = await requestLocationPermission();
 
     if(!hasLocationPermission || _locationData == null){
       throw Exception("Location permission not granted");
     }
+    locationInfo = await getRevGeoData();
+
     String formattedToday = DateFormat("yyyy-MM-dd").format(today);
 
-    String formattedWeekend =  DateFormat("yyyy-MM-dd").format(oneWeekFromNow);
+    String formattedWeekend =  DateFormat("yyyy-MM-dd").format(tommorow);
     String url  = 'https://api.open-meteo.com/v1/forecast?latitude=${_locationData!.latitude}&longitude=${_locationData!.longitude}&hourly=temperature_2m,weather_code,relative_humidity_2m,cloud_cover,visibility,is_day&current=is_day&start_date=$formattedToday&end_date=$formattedWeekend';
     Map<String, dynamic>  apiReponse =  await ApiService.fetch(url=url);
     Map<String, dynamic> hourlyData = apiReponse["hourly"];
     int dataLength =  hourlyData["time"].length;
 
+
     for (int index = 0; index < dataLength; index++) {
 
+
         DateTime time = DateTime.parse(hourlyData['time'][index]);
+
         String timeKey = DateFormat("yyyy-MM-dd:HH").format(time);
 
         Weather weatherObj = Weather(
@@ -271,10 +299,10 @@ class _MyHomePageState extends State<MyHomePage> {
         );
 
         weeklyWeatherData[timeKey] = weatherObj;
-
-        if (index < 23){
-          dailyWeather.add(weatherObj);
-        }
+        
+        dailyWeather.add(weatherObj);
+        
+        
     }
 
     setState(() {
@@ -297,9 +325,9 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     DateTime today = DateTime(now.year, now.month, now.day);
-    DateTime oneWeekFromNow = today.add(Duration(days: 7));
+    DateTime tommorow = today.add(Duration(days: 0));
     currentImageProvider = AssetImage(_imageUrls[0]);
-    getWeatherData(today, oneWeekFromNow);
+    getWeatherData(today, tommorow);
   }
 
   @override
@@ -397,7 +425,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text("Today", style: TextStyle(fontWeight: FontWeight.bold),),
-                            Text("Chicago", style: TextStyle(fontWeight: FontWeight.bold),)
+                            Text(locationInfo.city, style: TextStyle(fontWeight: FontWeight.bold),)
                           ],
                       )
                     )
@@ -406,7 +434,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Flexible(
                     child: FractionallySizedBox(
                             heightFactor: 0.8,
-                            child: hourlyWeatherSection(weatherCodes:dailyWeather ),
+                            child: hourlyWeatherSection(weatherCodes:dailyWeather, locationInfo: locationInfo ),
                           )
                 )
                 ]
@@ -438,7 +466,7 @@ class TopWeatherImageWidget extends StatelessWidget{
             child: Image(
               image: imageProvider,
               fit: BoxFit.cover,
-              width: double.infinity,  // <-- Add this
+              width: double.infinity, 
               height: double.infinity,
             )
           );
@@ -457,14 +485,24 @@ class ApiService{
             throw Exception("Failed to get response ${response.statusCode}");
           }
       } catch(e){
-          throw Exception("Request failed! ${e}");
+          throw Exception("Request failed! $e");
       }
 
   }
 }
 
+String? _formatTime(DateTime time, LocationInfo localityInfo) {
+  if (localityInfo.timeZone == null || localityInfo.timeZone!.isEmpty) {
+    throw Exception("Invalid or missing time zone in localityInfo");
+  }
 
-Container hourlyWeatherSection({required List<Weather> weatherCodes }){
+  final timeZone = tz.getLocation(localityInfo.timeZone!);
+  final localisedTime = tz.TZDateTime.from(time, timeZone);
+  return DateFormat("h a").format(localisedTime);
+}
+
+
+Container hourlyWeatherSection({required List<Weather> weatherCodes, required locationInfo }){
   return Container(
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -482,9 +520,9 @@ Container hourlyWeatherSection({required List<Weather> weatherCodes }){
               children: [
                 Text(
                   style: TextStyle(color: index == 0 ? Colors.black : Color.fromRGBO(155, 155, 155, 1)),
-                  index == 0 ? "Now" : DateFormat("h a").format(weatherCodes[index].time),
+                  index == 0 ? "Now" : _formatTime(weatherCodes[index].time, locationInfo) ?? "",
                 ),
-                Container(
+                SizedBox(
                   width: 50,
                   height: 50,
                   child: Image.asset(WeatherCodes.getWeatherInfoWithFallback(weatherCodes[index].weatherCode).assetPath),

@@ -33,6 +33,7 @@ dependencies:
   http: ^1.4.0
   intl: ^0.20.2
   location: '7.0.1'
+  timezone: ^0.9.2
 
 dev_dependencies:
   flutter_test:
@@ -74,16 +75,16 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
-    - family: Schyler
+    - family: Montserrat
       fonts:
-        - asset: fonts/Schyler-Regular.ttf
-        - asset: fonts/Schyler-Italic.ttf
-          style: italic
-    - family: Trajan Pro
+        - asset: assets/fonts/Montserrat-Light.ttf
+          weight: 300
+
+    - family: Poppins
       fonts:
-        - asset: fonts/TrajanPro.ttf
-        - asset: fonts/TrajanPro_Bold.ttf
-          weight: 700
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 300
+
     - family: Roboto
       fonts:
         - asset: assets/fonts/Roboto_SemiCondensed-ExtraBold.ttf
